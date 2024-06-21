@@ -15,7 +15,7 @@ pipeline {
 				sh 'docker version'
 				// sh 'docker help'
 				echo "Build"
-				echo "$PATH"
+				echo "PATH - $PATH"
 				echo "BUILD_NUMBER - $env.BUILD_NUMBER"	
 				echo "BUILD_ID - $env.BUILD_ID"
 				echo "JOB_NAME - $env.JOB_NAME"
@@ -38,10 +38,36 @@ pipeline {
 				sh "mvn test"
 			}
 		}
-		
+
 		stage ('Integration Test') {
 			steps {
 				sh "mvn failsafe:integration-test failsafe:verify"
+			}
+		}
+
+		stage ('Package') {
+			steps {
+				sh "mvn package -DskipTests"
+			}
+		}
+
+		stage ('Build Docker Image') {
+			steps {
+				//"docker build -t ch1m1k3/currency-exchange-devops:$env.BUILD_TAG"
+				script {
+					dockerImage = docker.build("ch1m1k3/currency-exchange-devops:${env.BUILD_TAG}")
+				}
+			}
+		}
+
+		stage ('Push Docker Image') {
+			steps {
+				script {
+					docker.withRegistry('', 'DockerHub') {
+						dockerImage.push();
+						dockerImage.push('latest');	
+					}
+				}
 			}
 		}
 	}
